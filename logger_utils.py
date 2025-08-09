@@ -26,10 +26,10 @@ class ColoredFormatter(logging.Formatter):
 
 
 class DiscordWebhookHandler(logging.Handler):
-    """Logging handler that forwards log records to a Discord webhook."""
+    """Logging handler that forwards log records (NOTIF and above) to a Discord webhook."""
 
-    def __init__(self, webhook_url: str) -> None:
-        super().__init__()
+    def __init__(self, webhook_url: str, level: int = logging.INFO) -> None:
+        super().__init__(level)
         self.webhook_url: str = webhook_url
 
     def emit(self, record: logging.LogRecord) -> None:  # noqa: D401
