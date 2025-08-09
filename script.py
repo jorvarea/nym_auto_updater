@@ -18,12 +18,19 @@ BINARY_FILENAME = "nym-node"                    # Final binary name
 
 logger = setup_logger()
 
-def get_latest_release_tag() -> str:
-    """Fetch the latest release tag from GitHub API."""
-    url = f"https://api.github.com/repos/{REPO}/releases/latest"
+def get_latest_binary_release_tag() -> str:
+    url = f"https://api.github.com/repos/{REPO}/releases"
     resp = requests.get(url, timeout=10)
     resp.raise_for_status()
-    return resp.json()["tag_name"]
+    releases = resp.json()
+
+    binary_releases = [
+        r for r in releases if re.match(r"^nym-binaries", r["tag_name"])
+    ]
+    
+    binary_releases.sort(key=lambda r: r["published_at"], reverse=True)
+    
+    return binary_releases[0]["tag_name"]
 
 def read_last_release() -> str:
     """Read the last installed release tag from file."""
@@ -39,9 +46,9 @@ def write_last_release(tag: str) -> None:
 
 def download_release(tag: str) -> str:
     """Download the release binary using wget, return its path."""
-    # Build download URL
     url = f"https://github.com/{REPO}/releases/download/{tag}/{BINARY_FILENAME}"
     output_path = os.path.join(DOWNLOAD_DIR, f"{tag}")
+
     logger.info(f"Downloading {url} -> {output_path}")
     subprocess.run(["wget", "-q", "-c", url, "-O", output_path], check=True)
     return output_path
@@ -143,16 +150,20 @@ def update_binary(new_binary_path: str):
         logger.error(f"Could not stop {SERVICE_NAME} service.")
 
 def main():
-    latest_tag = get_latest_release_tag()
-    last_tag = read_last_release()
+    try:
+        latest_tag = get_latest_binary_release_tag()
+        last_tag = read_last_release()
 
-    if latest_tag != last_tag:
-        logger.info(f"New release detected: {latest_tag} (previous: {last_tag or 'none'})")
-        binary_path = download_release(latest_tag)
-        update_binary(binary_path)
-        write_last_release(latest_tag)
-    else:
-        logger.debug(f"No new release. Still at {last_tag}")
+        if latest_tag != last_tag:
+            logger.info(f"New release detected: {latest_tag} (previous: {last_tag or 'none'})")
+            binary_path = download_release(latest_tag)
+            update_binary(binary_path)
+            write_last_release(latest_tag)
+        else:
+            logger.debug(f"No new release. Still at {last_tag}")
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
