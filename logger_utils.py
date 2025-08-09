@@ -51,7 +51,7 @@ def setup_logger(log_name: str = "app") -> logging.Logger:
     )
 
     file_handler = RotatingFileHandler(
-        f"logs/{log_name}.log", maxBytes=10 * 1024 * 1024, backupCount=3
+        f"{log_name}.log", maxBytes=10 * 1024 * 1024, backupCount=3
     )
     file_handler.setFormatter(file_formatter)
 
