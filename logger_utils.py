@@ -2,7 +2,9 @@ import logging
 from logging.handlers import RotatingFileHandler
 import os
 import requests
+from dotenv import load_dotenv, find_dotenv
 
+load_dotenv(find_dotenv())
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 
 class ColoredFormatter(logging.Formatter):
