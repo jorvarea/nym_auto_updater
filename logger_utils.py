@@ -60,7 +60,7 @@ def setup_logger(log_name: str = "app") -> logging.Logger:
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(colored_formatter)
 
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
