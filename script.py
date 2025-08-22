@@ -6,6 +6,7 @@ import threading
 import subprocess
 import os
 import sys
+import re
 from logger_utils import setup_logger
 
 # --- Configuration ---
@@ -17,6 +18,23 @@ BINARY_FILENAME = "nym-node"                    # Final binary name
 # ----------------------
 
 logger = setup_logger()
+
+def parse_version(tag: str) -> tuple:
+    """
+    Extracts version numbers from tag.
+    Example: 'nym-binaries-v2025.13-emmental' -> (2025, 13)
+    """
+    match = re.search(r"nym-binaries-v(\d+)\.(\d+)", tag)
+    if not match:
+        raise ValueError(f"Could not parse version from tag: {tag}")
+    major, minor = match.groups()
+    return int(major), int(minor)
+
+def is_newer_version(latest: str, last: str) -> bool:
+    """Return True if latest > last."""
+    if not last:
+        return True
+    return parse_version(latest) > parse_version(last)
 
 def get_latest_binary_release_tag() -> str:
     url = f"https://api.github.com/repos/{REPO}/releases"
@@ -154,13 +172,15 @@ def main():
         latest_tag = get_latest_binary_release_tag()
         last_tag = read_last_release()
 
-        if latest_tag != last_tag:
-            logger.info(f"New release detected: {latest_tag} (previous: {last_tag or 'none'})")
+        if is_newer_version(latest_tag, last_tag):
+            logger.info(f"Newer release detected: {latest_tag} (previous: {last_tag or 'none'})")
             binary_path = download_release(latest_tag)
             update_binary(binary_path)
             write_last_release(latest_tag)
-        else:
+        elif latest_tag == last_tag:
             logger.debug(f"No new release. Still at {last_tag}")
+        else:
+            logger.warning(f"Ignoring downgrade attempt: {latest_tag} < {last_tag}")
     except Exception as e:
         logger.error(f"Error: {e}")
         sys.exit(1)
