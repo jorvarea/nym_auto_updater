@@ -7,6 +7,8 @@ import subprocess
 import os
 import sys
 import re
+import shutil
+from datetime import datetime
 from logger_utils import setup_logger
 
 # --- Configuration ---
@@ -61,6 +63,19 @@ def write_last_release(tag: str) -> None:
     """Write the last installed release tag to file."""
     with open(STATE_FILE, "w") as f:
         f.write(tag)
+
+def backup_nym_folder():
+    """Backup the entire .nym folder before making changes."""
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    
+    nym_folder = "/home/nymnode/.nym"
+    if os.path.exists(nym_folder):
+        backup_folder = f"{nym_folder}_backup_{timestamp}.tar.gz"
+        logger.info(f"Creating compressed backup of .nym folder at {backup_folder} ...")
+        shutil.make_archive(f"{nym_folder}_backup_{timestamp}", 'gztar', nym_folder)
+        logger.info("Backup of .nym folder completed successfully.")
+    else:
+        logger.warning(f".nym folder not found at {nym_folder}, skipping backup.")
 
 def download_release(tag: str) -> str:
     """Download the release binary using wget, return its path."""
@@ -174,6 +189,7 @@ def main():
 
         if is_newer_version(latest_tag, last_tag):
             logger.info(f"Newer release detected: {latest_tag} (previous: {last_tag or 'none'})")
+            backup_nym_folder()
             binary_path = download_release(latest_tag)
             update_binary(binary_path)
             write_last_release(latest_tag)
