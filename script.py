@@ -39,18 +39,21 @@ def is_newer_version(latest: str, last: str) -> bool:
     return parse_version(latest) > parse_version(last)
 
 def get_latest_binary_release_tag() -> str:
+    """
+    Gets the latest stable binary release tag from GitHub.
+    Skips prereleases.
+    """
     url = f"https://api.github.com/repos/{REPO}/releases"
     resp = requests.get(url, timeout=10)
     resp.raise_for_status()
     releases = resp.json()
 
-    binary_releases = [
-        r for r in releases if re.match(r"^nym-binaries", r["tag_name"])
-    ]
+    for r in releases:
+        if re.match(r"^nym-binaries", r["tag_name"]) and not r["prerelease"]:
+            return r["tag_name"]
     
-    binary_releases.sort(key=lambda r: r["published_at"], reverse=True)
-    
-    return binary_releases[0]["tag_name"]
+    logger.warning("No stable binary release found.")
+    return ""
 
 def read_last_release() -> str:
     """Read the last installed release tag from file."""
@@ -185,6 +188,11 @@ def update_binary(new_binary_path: str):
 def main():
     try:
         latest_tag = get_latest_binary_release_tag()
+        
+        if not latest_tag:
+            logger.info("No stable release found to update.")
+            return
+
         last_tag = read_last_release()
 
         if is_newer_version(latest_tag, last_tag):
